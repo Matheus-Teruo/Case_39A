@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:17.4
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/migration:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - private
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_DATABASE: ${DATABASE_DB}
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_USER: ${DATABASE_USER}
+      DB_POSTGRESDB_PASSWORD: ${DATABASE_PASSWORD}
+      N8N_BASIC_AUTH_ACTIVE: true
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    depends_on:
+      - postgres
+    networks:
+      - private
+volumes:
+  postgres_data:
+  n8n_data:
+networks:
+  private:
