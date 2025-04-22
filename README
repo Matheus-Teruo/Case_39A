@@ -1,0 +1,51 @@
+## Estrutura do Projeto
+├── n8n/
+│ ├── workflows/
+│ ├── postman_collection.json
+├── postgres/
+│ ├── migrations/
+│ └── dummy-corpus/ 
+├── docker-compose.yml (PostgreSQL + n8n)
+├── .env.sample # Exemplo de variáveis de ambiente
+
+
+## Testando os Workflows
+Configurar o um arquivo `.env` com base no arquivo `.env.sample`
+
+Subir os containers com o seguinte comando
+```bash
+docker-compose up -d
+```
+
+Os workflows estão disponíveis em arquivos .json na pasta n8n/workflows e podem ser importados diretamente pela interface do n8n.
+
+os workflows são os seguintes:
+
+1. Carregamento do Corpus Dummy
+Responsável por popular o banco com dados fictícios para teste.
+Alternativamente, você também pode executar os scripts SQL manualmente via pgAdmin ou outro cliente PostgreSQL.
+
+2. Workflow Principal do Case
+Recebe um JSON contendo os dados de entrada e executa todo o fluxo de análise de consumo energético.
+
+#### Como testar
+Você pode testar o funcionamento de duas formas:
+
+- Usando o Postman, com a collection disponível na pasta n8n/.
+
+- Via terminal, usando o comando curl:
+```bash
+curl -X GET http://localhost:5678/webhook-test/clients-average-energy-usage
+```
+
+### Lógica de Cálculo de Outliers
+
+O cálculo dos outliers é realizado com base nas últimas leituras de consumo de energia dos contratos ativos. O fluxo é:
+
+1. Realizar uma consulta no banco para obter os clientes com contratos válidos.
+
+2. Para cada contrato, buscar as 3 leituras de energia mais recentes.
+
+3. Calcular a média de consumo e o desvio padrão.
+
+4. Qualquer valor que esteja fora de dois desvios padrão da média é considerado um outlier.
