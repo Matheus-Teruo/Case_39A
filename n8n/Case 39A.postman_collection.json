@@ -1,0 +1,30 @@
+{
+	"info": {
+		"_postman_id": "288e7eeb-6ae1-4ac8-8fba-ce4b68227349",
+		"name": "Case 39A",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38885305"
+	},
+	"item": [
+		{
+			"name": "Request Clients Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5678/webhook-test/clients-average-energy-usage",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5678",
+					"path": [
+						"webhook-test",
+						"clients-average-energy-usage"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
