@@ -1,0 +1,162 @@
+{
+  "name": "Workflow client status",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "clients-average-energy-usage",
+        "responseMode": "lastNode",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d5274aa3-7e65-40b3-8155-d7d5baac2511",
+      "name": "Webhook",
+      "webhookId": "8ae46aec-c59c-4b63-a1bf-274286d6e66a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  c.uuid,\n  c.client_name,\n  json_agg(\n    json_build_object(\n      'contract_uuid', ct.uuid,\n      'time_stamp_contract', ct.time_stamp_contract,\n      'reads', (\n        SELECT json_agg(er ORDER BY er.time_stamp_read DESC)\n        FROM (\n          SELECT er.*\n          FROM energy_readings er\n          WHERE er.contract_uuid = ct.uuid\n          ORDER BY er.time_stamp_read DESC\n          LIMIT 3\n        ) er\n      )\n    )\n  ) AS contract_valid\nFROM clients c\nJOIN contracts ct ON ct.client_uuid = c.uuid AND ct.valid = TRUE\nGROUP BY c.uuid ,c.client_name\nORDER BY c.client_name ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        0
+      ],
+      "id": "2ac190d9-47c0-4300-956d-daacf3cc8b1e",
+      "name": "Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "uFDjrE5O00A9VP0h",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function calcAverage(reads) { // calcula média\n  const total = reads.reduce((sum, read) => sum + read.energy_usage, 0);\n  return reads.length > 0 ? total / reads.length : 0;\n}\n\nfunction takeReads(client) { // Pega os valores do cliente e devolve em um array\n  return client.contract_valid.flatMap(contract => contract.reads || []);\n}\n\n// (entrada do node) (feito em 1 request ao banco de dados para economizar trafego)\nconst clients = items.map(item => item.json);\n\n// salva média do cliente\nconst clientsAverages = clients.map(client => {\n  const reads = takeReads(client);\n  const average = calcAverage(reads);\n  return {\n    ...client,\n    average_energy_usage: average\n  };\n});\n\nconst averages = clientsAverages.map(client => client.average_energy_usage);\nconst generalAverages = averages.reduce((a, b) => a + b, 0) / averages.length;\nconst standardDeviation = Math.sqrt(\n  averages.reduce((sum, m) => sum + Math.pow(m - generalAverages, 2), 0) / averages.length\n);\n\n// usando calculo de desvio padrão para avaliar outliner, igual a 2 desvio padrão é considerado outliner (modelo simples que pode ser aperfeiçoado conforme necessidades)\nconst resultado = clientsAverages.map(client => {\n  const isOutlier = Math.abs(client.average_energy_usage - generalAverages) > standardDeviation * 2;\n  return {\n    cliente_nome: client.client_name,\n    average_energy_usage_kWh: client.average_energy_usage,\n    status: isOutlier ? \"outliner\" : \"normal\"\n  };\n});\n\nreturn resultado.map(r => ({ json: r }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "8a758820-fc37-4eb5-92ed-ee14184aba98",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.messages[0].content}}",
+              "role": "system"
+            },
+            {
+              "content": "={{$json.messages[1].content}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        880,
+        0
+      ],
+      "id": "ea5b306b-c27f-4f7b-9edf-68760e72d1ee",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "SynM2zxQqhkTkj31",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet texto = \"Gere um relatório com base nos seguintes dados de clientes e seus status (normal ou outliner):\\n\\n\";\n\nfor (const item of items) {\n  const client = item.json;\n  texto += `Cliente: ${client.cliente_nome} \\n consumo: ${client.average_energy_usage_kWh} kWh \\n Status: ${client.status}, \\n \\n`;\n}\n\nreturn {\n    json: {\n      messages: [\n        {\n          role: \"system\",\n          content: \"Você é um analista de energia que escreve relatórios simples baseados em dados de consumo.\"\n        },\n        {\n          role: \"user\",\n          content: texto\n        }\n      ]\n    }\n  }\n;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "ea1c54b8-baec-4547-987c-0970e9f01023",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "01b2c70c-d6b2-454b-ad3d-3d896a3f9321",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "351b1c9b9bd6fa3751308fdb55b2de3411538d86e23be4ecc30e448e7621afca"
+  },
+  "id": "n3ZPYfXeKjkK77Cr",
+  "tags": []
+}
