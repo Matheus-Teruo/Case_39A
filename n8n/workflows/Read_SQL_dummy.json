@@ -1,0 +1,114 @@
+{
+  "name": "Read SQL dummy",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d744a412-29b8-47bb-85d4-ad6095feed78",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        640,
+        0
+      ],
+      "id": "2aafd57f-0656-4794-9cfe-ace9e3e35dc0",
+      "name": "Postgres",
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "uFDjrE5O00A9VP0h",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "/data/sql/dummy-corpus.sql",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "d92234b3-697d-4044-9c4f-f4862fd22a3a",
+      "name": "Read Files from Disk",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = Buffer.from(items[0].binary.data.data, 'base64').toString('utf8');\n\nconst cleaned = raw\n  .split(/\\r?\\n/)\n  .filter(line => !line.trim().startsWith('\\\\'))\n  .map(line => line.replace(/--.*$/, ''))\n  .filter(line => line.trim().length > 0)\n  .join('\\n');\n\nconst queries = cleaned\n  .split(';')\n  .map(q => q.trim())\n  .filter(q => q.length > 0);\n\nreturn queries.map(query => ({\n  json: { query: query + ';' }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "fa5ed8fa-7a47-4657-b055-fe09fa2242b9",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b72c98f6-4e8f-4c19-a428-edd639f414c0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "351b1c9b9bd6fa3751308fdb55b2de3411538d86e23be4ecc30e448e7621afca"
+  },
+  "id": "wekP8imyNIQIpUf7",
+  "tags": []
+}
