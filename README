@@ -16,6 +16,10 @@
 
 Configurar o um arquivo `.env` com base no arquivo `.env.sample`
 
+Dentro do n8n, as credenciais devem estar de acordo com as do arquivo `.env`. Porem banco de dados utilizado é o `energy_readings_db`, onde ficam os dados do projeto.
+
+Por questão de praticidade, não foi criado outro usuário além do admin no banco de dados; porém, para um projeto em produção, seria ideal utilizar um usuário diferente.
+
 Subir os containers com o seguinte comando
 ```bash
 docker-compose up -d
